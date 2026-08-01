@@ -1,12 +1,12 @@
 # GUCCI
 
-راه‌اندازی پنل **3x-ui** با داکر — **پنل و لینک ساب با هم روی یک پورت واحد** (پیش‌فرض `1111`) بالا می‌آیند.
+راه‌اندازی پنل **3x-ui** با داکر — **پنل و لینک ساب با هم روی یک پورت واحد** (پیش‌فرض `62789`) بالا می‌آیند.
 
 ## معماری
 
 ```
                    ┌──  /        →  پنل وب        (داخلی 127.0.0.1:2053)
-nginx (پورت 1111) ──┤
+nginx (پورت 62789) ──┤
                    └──  /sub/    →  سرویس ساب     (داخلی 127.0.0.1:2096)
 ```
 
@@ -37,7 +37,7 @@ PUBLIC_URL=https://your-app.onrender.com
 ## دیپلوی روی Railway / Render / Koyeb
 
 1. ریپو را وصل کنید (Deploy from Git — نوع Docker).
-2. پورت عمومی: `1111` (اگر پلتفرم متغیر `PORT` تزریق کند، خودکار همان استفاده می‌شود).
+2. پورت عمومی: `62789` (اگر پلتفرم متغیر `PORT` تزریق کند، خودکار همان استفاده می‌شود).
 3. بعد از دیپلوی و گرفتن دامنه، `PUBLIC_URL` را ست کنید و Redeploy کنید.
 4. برای ماندگاری تنظیمات بعد از Redeploy، یک Volume به مسیر `/etc/x-ui` وصل کنید.
 
@@ -46,13 +46,13 @@ PUBLIC_URL=https://your-app.onrender.com
 ```bash
 docker build -t gucci .
 docker run -d --name gucci \
-  -p 1111:1111 \
+  -p 62789:62789 \
   -v x-ui-db:/etc/x-ui \
-  -e PUBLIC_URL="http://YOUR_IP:1111" \
+  -e PUBLIC_URL="http://YOUR_IP:62789" \
   --restart always gucci
 ```
 
-پنل: `http://YOUR_IP:1111/` و ساب: `http://YOUR_IP:1111/sub/<SubID>`
+پنل: `http://YOUR_IP:62789/` و ساب: `http://YOUR_IP:62789/sub/<SubID>`
 
 ## ⚠️ نکات
 

@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------
 # Single public port entrypoint for 3x-ui
 #
-#   nginx (public)  ->  ${PORT:-1111}
+#   nginx (public)  ->  ${PORT:-62789}
 #     /      ->  web panel             (127.0.0.1:2053)
 #     /sub/  ->  subscription service  (127.0.0.1:2096)
 #
