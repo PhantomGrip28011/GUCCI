@@ -14,7 +14,6 @@ http {
         # Bind only the container's primary IP (NOT 0.0.0.0) — the internal
         # xray API socket lives on 127.0.0.1:62789 and wildcard binds collide.
         listen ${LISTEN_ADDR}:${FIXED_PORT};
-        ${EXTRA_LISTEN}
 
         # --------------------------------------------
         # Subscription service (sub links)
