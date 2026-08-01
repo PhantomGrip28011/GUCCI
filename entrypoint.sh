@@ -70,10 +70,16 @@ fi
 INTERNAL_INBOUND_PORT=38080
 EXTRA_LOCATION=""
 if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
-    STREAM=$(sqlite3 "$DB" "SELECT stream_settings FROM inbounds WHERE port=$FIXED_PORT LIMIT 1;" 2>/dev/null || true)
-    if [ -n "$STREAM" ]; then
+    echo "[gucci] diagnostics — DB tables:"
+    sqlite3 "$DB" ".tables" 2>&1 | head -5 || true
+    echo "[gucci] diagnostics — inbound rows (id/enable/listen/port/protocol):"
+    sqlite3 "$DB" "SELECT id, enable, listen, port, protocol FROM inbounds;" 2>&1 | head -10 || true
+
+    CONFLICT_ID=$(sqlite3 "$DB" "SELECT id FROM inbounds WHERE port=$FIXED_PORT LIMIT 1;" 2>/dev/null || true)
+    if [ -n "$CONFLICT_ID" ]; then
         echo "[gucci] Inbound(s) found on public port $FIXED_PORT -> moving to 127.0.0.1:$INTERNAL_INBOUND_PORT"
         sqlite3 "$DB" "UPDATE inbounds SET port=$INTERNAL_INBOUND_PORT, listen='127.0.0.1' WHERE port=$FIXED_PORT;" 2>/dev/null || true
+        STREAM=$(sqlite3 "$DB" "SELECT stream_settings FROM inbounds WHERE id=$CONFLICT_ID;" 2>/dev/null || true)
         WS_PATH=$(printf '%s' "$STREAM" | grep -o '"path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"\([^"]*\)"/\1/')
         if [ -n "$WS_PATH" ] && [ "$WS_PATH" != "/" ]; then
             echo "[gucci] Routing inbound WebSocket path $WS_PATH via nginx"
@@ -87,6 +93,8 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         }"
         fi
+    else
+        echo "[gucci] No inbound occupies the public port — all clear"
     fi
 fi
 
@@ -108,7 +116,10 @@ else
     "$XUI_BIN" &
 fi
 
-sleep 2
+sleep 3
+
+echo "[gucci] listeners right before nginx starts:"
+netstat -lnt 2>/dev/null || netstat -lntp 2>/dev/null || true
 
 echo "[gucci] Public entrypoint ready: http://<address>:$FIXED_PORT/  (+ /sub/)"
 exec nginx -g "daemon off;"
