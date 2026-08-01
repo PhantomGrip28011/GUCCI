@@ -50,6 +50,21 @@ http {
         ${SUBFIX_LOCATION}
 
         # --------------------------------------------
+        # Foolproof short sub link: /<subId> works too
+        # (in case the /sub/ prefix gets dropped when
+        # the link is typed or shared by hand)
+        # --------------------------------------------
+        location ~ ^/(?<guccisid>[a-z0-9]{16})/?$ {
+            proxy_pass http://127.0.0.1:2096/sub/$guccisid;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        # --------------------------------------------
         # Web panel
         # -> internal 3x-ui panel on loopback:12053
         # --------------------------------------------
