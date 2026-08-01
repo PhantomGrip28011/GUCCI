@@ -61,16 +61,45 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
     fi
 fi
 
+# ---------------------------------------------------------------
+# Collision guard: if an xray inbound squats on the public port
+# (e.g. user created one on 62789), nginx could never bind and the
+# container crash-loops. Move those inbounds to loopback:38080 and,
+# when they use WebSocket, expose them through nginx on their path.
+# ---------------------------------------------------------------
+INTERNAL_INBOUND_PORT=38080
+EXTRA_LOCATION=""
+if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
+    STREAM=$(sqlite3 "$DB" "SELECT stream_settings FROM inbounds WHERE port=$FIXED_PORT LIMIT 1;" 2>/dev/null || true)
+    if [ -n "$STREAM" ]; then
+        echo "[gucci] Inbound(s) found on public port $FIXED_PORT -> moving to 127.0.0.1:$INTERNAL_INBOUND_PORT"
+        sqlite3 "$DB" "UPDATE inbounds SET port=$INTERNAL_INBOUND_PORT, listen='127.0.0.1' WHERE port=$FIXED_PORT;" 2>/dev/null || true
+        WS_PATH=$(printf '%s' "$STREAM" | grep -o '"path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"\([^"]*\)"/\1/')
+        if [ -n "$WS_PATH" ] && [ "$WS_PATH" != "/" ]; then
+            echo "[gucci] Routing inbound WebSocket path $WS_PATH via nginx"
+            EXTRA_LOCATION="location $WS_PATH {
+            proxy_pass http://127.0.0.1:$INTERNAL_INBOUND_PORT;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection \"upgrade\";
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        }"
+        fi
+    fi
+fi
+
 # Always listen on the fixed public port; ALSO listen on the platform's
 # $PORT if it is set to something different (Railway target-port mismatch).
 EXTRA_LISTEN=""
 if [ "$PORT" != "$FIXED_PORT" ]; then
     EXTRA_LISTEN="listen $PORT;"
 fi
-export FIXED_PORT EXTRA_LISTEN
+export FIXED_PORT EXTRA_LISTEN EXTRA_LOCATION
 
 echo "[gucci] Rendering nginx.conf (public port: $FIXED_PORT, extra: ${PORT:-none})"
-envsubst '${FIXED_PORT} ${EXTRA_LISTEN}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+envsubst '${FIXED_PORT} ${EXTRA_LISTEN} ${EXTRA_LOCATION}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
 echo "[gucci] Starting x-ui (internal services)..."
 if [ -f /app/DockerEntrypoint.sh ]; then
