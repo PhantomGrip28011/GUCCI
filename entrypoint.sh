@@ -109,8 +109,22 @@ fi
 LISTEN_ADDR="${HOST_IP:-0.0.0.0}"
 export LISTEN_ADDR FIXED_PORT EXTRA_LOCATION
 
+# ------------------------------------------------------------------
+# Static subscription feed, served by nginx at /subfix/gucci
+# (base64 of the working vless links with the public TCP-proxy address)
+# ------------------------------------------------------------------
+SUBFIX_B64="dmxlc3M6Ly9kZjlkZmM2Yy0wNDA3LTQzNzUtYjc4NS0yMmQyNWE3Y2I0MzNAaGF5YWJ1c2EucHJveHkucmx3eS5uZXQ6MTEyNzk/ZW5jcnlwdGlvbj1ub25lJmZwPWNocm9tZSZwYms9NUxMZ0RwaEthMTdCYnlOeGJ3SUYyRnItdTFmZThlYlh3SGU0Q1JuekRYMCZzZWN1cml0eT1yZWFsaXR5JnNpZD0yY2I0JnNuaT15YWhvby5jb20mc3B4PSUyRjI3MTJkZDEyYjYxNmFjZSZ0eXBlPXRjcCN4Z3Eya2YxMzNwCnZsZXNzOi8vNDUzODI2MTItMTYxMC00YTgxLTg5ODAtZDQ2ODgzNzAzOWIyQGhheWFidXNhLnByb3h5LnJsd3kubmV0OjExMjc5P2VuY3J5cHRpb249bm9uZSZmcD1jaHJvbWUmcGJrPTVMTGdEcGhLYTE3QmJ5Tnhid0lGMkZyLXUxZmU4ZWJYd0hlNENSbnpEWDA"
+SUBFIX_B64="${SUBFIX_B64}JnNlY3VyaXR5PXJlYWxpdHkmc2lkPWJhODk4ZWJjOWJmZTI0OWQmc25pPWFkZC5teS55YWhvby5jb20mc3B4PSUyRjg2MTZjN2Q4MjRhMDJkNiZ0eXBlPXRjcCNndWNjaS1zdWIxCg=="
+
+SUBFIX_LOCATION="location = /subfix/gucci {
+            default_type text/plain;
+            add_header profile-update-interval 1;
+            return 200 \"$SUBFIX_B64\";
+        }"
+export SUBFIX_LOCATION
+
 echo "[gucci] Rendering nginx.conf (public port: $FIXED_PORT on $LISTEN_ADDR)"
-envsubst '${LISTEN_ADDR} ${FIXED_PORT} ${EXTRA_LOCATION}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+envsubst '${LISTEN_ADDR} ${FIXED_PORT} ${EXTRA_LOCATION} ${SUBFIX_LOCATION}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
 echo "[gucci] Starting x-ui (internal services)..."
 if [ -f /app/DockerEntrypoint.sh ]; then
