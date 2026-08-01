@@ -100,14 +100,26 @@ fi
 
 # Always listen on the fixed public port; ALSO listen on the platform's
 # $PORT if it is set to something different (Railway target-port mismatch).
+#
+# IMPORTANT: bind ONLY the container's primary (eth0) IP, not 0.0.0.0.
+# 3x-ui's embedded xray template parks its internal API on
+# 127.0.0.1:62789 — binding the wildcard address would collide with
+# that loopback socket ("Address in use") and crash-loop the container.
+HOST_IP=$(hostname -i 2>/dev/null | awk '{print $1}')
+if [ -z "$HOST_IP" ]; then
+    HOST_IP=$(ip -4 addr show eth0 2>/dev/null | grep -o 'inet [0-9.]*' | awk '{print $2}')
+fi
+LISTEN_ADDR="${HOST_IP:-0.0.0.0}"
+export LISTEN_ADDR
+
 EXTRA_LISTEN=""
 if [ "$PORT" != "$FIXED_PORT" ]; then
-    EXTRA_LISTEN="listen $PORT;"
+    EXTRA_LISTEN="listen $LISTEN_ADDR:$PORT;"
 fi
 export FIXED_PORT EXTRA_LISTEN EXTRA_LOCATION
 
 echo "[gucci] Rendering nginx.conf (public port: $FIXED_PORT, extra: ${PORT:-none})"
-envsubst '${FIXED_PORT} ${EXTRA_LISTEN} ${EXTRA_LOCATION}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+envsubst '${LISTEN_ADDR} ${FIXED_PORT} ${EXTRA_LISTEN} ${EXTRA_LOCATION}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
 echo "[gucci] Starting x-ui (internal services)..."
 if [ -f /app/DockerEntrypoint.sh ]; then
