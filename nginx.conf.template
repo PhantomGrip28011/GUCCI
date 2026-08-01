@@ -11,7 +11,8 @@ http {
     client_max_body_size 64m;
 
     server {
-        listen ${PORT};
+        listen ${FIXED_PORT};
+        ${EXTRA_LISTEN}
 
         # --------------------------------------------
         # Subscription service (sub links)

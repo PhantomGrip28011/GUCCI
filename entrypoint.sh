@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------
 # Single public port entrypoint for 3x-ui
 #
-#   nginx (public)  ->  ${PORT:-62789}
+#   nginx (public)  ->  62789  (+ platform $PORT if different)
 #     /      ->  web panel             (127.0.0.1:2053)
 #     /sub/  ->  subscription service  (127.0.0.1:2096)
 #
@@ -11,9 +11,24 @@
 # ---------------------------------------------------------------
 set -e
 
-PUBLIC_PORT="${PORT:-1111}"
+FIXED_PORT=62789
+PORT="${PORT:-$FIXED_PORT}"
+export PORT
 DB_FOLDER="${XUI_DB_FOLDER:-/etc/x-ui}"
 DB="$DB_FOLDER/x-ui.db"
+
+# Public URL for sub links: explicit PUBLIC_URL wins, otherwise auto-detect
+# from well-known platform variables (Railway / Render / Koyeb).
+if [ -z "$PUBLIC_URL" ]; then
+    if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+        PUBLIC_URL="https://$RAILWAY_PUBLIC_DOMAIN"
+    elif [ -n "$RENDER_EXTERNAL_HOSTNAME" ]; then
+        PUBLIC_URL="https://$RENDER_EXTERNAL_HOSTNAME"
+    elif [ -n "$KOYEB_PUBLIC_DOMAIN" ]; then
+        PUBLIC_URL="https://$KOYEB_PUBLIC_DOMAIN"
+    fi
+fi
+[ -n "$PUBLIC_URL" ] && echo "[gucci] Public URL: $PUBLIC_URL"
 
 # Locate the x-ui binary (path differs between image versions)
 if [ -x /app/x-ui ]; then
@@ -46,8 +61,16 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
     fi
 fi
 
-echo "[gucci] Rendering nginx.conf (public port: $PUBLIC_PORT)"
-envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+# Always listen on the fixed public port; ALSO listen on the platform's
+# $PORT if it is set to something different (Railway target-port mismatch).
+EXTRA_LISTEN=""
+if [ "$PORT" != "$FIXED_PORT" ]; then
+    EXTRA_LISTEN="listen $PORT;"
+fi
+export FIXED_PORT EXTRA_LISTEN
+
+echo "[gucci] Rendering nginx.conf (public port: $FIXED_PORT, extra: ${PORT:-none})"
+envsubst '${FIXED_PORT} ${EXTRA_LISTEN}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
 echo "[gucci] Starting x-ui (internal services)..."
 if [ -f /app/DockerEntrypoint.sh ]; then
@@ -58,5 +81,5 @@ fi
 
 sleep 2
 
-echo "[gucci] Public entrypoint ready: http://<address>:$PUBLIC_PORT/  (+ /sub/)"
+echo "[gucci] Public entrypoint ready: http://<address>:$FIXED_PORT/  (+ /sub/)"
 exec nginx -g "daemon off;"
