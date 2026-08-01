@@ -2,8 +2,8 @@
 # ---------------------------------------------------------------
 # Single public port entrypoint for 3x-ui
 #
-#   nginx (public)  ->  62789  (+ platform $PORT if different)
-#     /      ->  web panel             (127.0.0.1:2053)
+#   nginx (public)  ->  2053  (+ platform $PORT if different)
+#     /      ->  web panel             (127.0.0.1:12053)
 #     /sub/  ->  subscription service  (127.0.0.1:2096)
 #
 # Panel and the sub service only listen on loopback inside the
@@ -11,7 +11,7 @@
 # ---------------------------------------------------------------
 set -e
 
-FIXED_PORT=62789
+FIXED_PORT=2053
 PORT="${PORT:-$FIXED_PORT}"
 export PORT
 DB_FOLDER="${XUI_DB_FOLDER:-/etc/x-ui}"
@@ -37,8 +37,8 @@ else
     XUI_BIN=/usr/local/x-ui/x-ui
 fi
 
-echo "[gucci] Pinning panel settings: internal port 2053, root path, loopback only"
-"$XUI_BIN" setting -port 2053 -webBasePath / -listenIP 127.0.0.1 \
+echo "[gucci] Pinning panel settings: internal port 12053, root path, loopback only"
+"$XUI_BIN" setting -port 12053 -webBasePath / -listenIP 127.0.0.1 \
     || echo "[gucci] WARN: could not apply panel settings"
 
 # Upsert helper: settings.key is only indexed (not unique), so UPDATE first,
@@ -63,7 +63,7 @@ fi
 
 # ---------------------------------------------------------------
 # Collision guard: if an xray inbound squats on the public port
-# (e.g. user created one on 62789), nginx could never bind and the
+# (e.g. user created one on 2053), nginx could never bind and the
 # container crash-loops. Move those inbounds to loopback:38080 and,
 # when they use WebSocket, expose them through nginx on their path.
 # ---------------------------------------------------------------
@@ -113,7 +113,7 @@ export LISTEN_ADDR FIXED_PORT EXTRA_LOCATION
 # Static subscription feed, served by nginx at /subfix/gucci
 # (base64 of the working vless links with the public TCP-proxy address)
 # ------------------------------------------------------------------
-SUBFIX_B64="dmxlc3M6Ly9kZjlkZmM2Yy0wNDA3LTQzNzUtYjc1OC0yMmQyNWE3Y2I0MzNAaGF5YWJ1c2EucHJveHkucmx3eS5uZXQ6MTEyNzk/ZW5jcnlwdGlvbj1ub25lJmZwPWNocm9tZSZwYms9NUxMZ0RwaEthMTdCYnlOeGJ3SUYyRnItdTFmZThlYlh3SGU0Q1JuekRYMCZzZWN1cml0eT1yZWFsaXR5JnNpZD0yY2I0JnNuaT15YWhvby5jb20mc3B4PSUyRjI3MTJkZDEyYjYxNmFjZSZ0eXBlPXRjcCN4Z3Eya2YxMzNwCnZsZXNzOi8vNDUzODI2MTItMTYxMC00YTgxLTg5ODAtZDQ2ODgzNzAzOWIyQGhheWFidXNhLnByb3h5LnJsd3kubmV0OjExMjc5P2VuY3J5cHRpb249bm9uZSZmcD1jaHJvbWUmcGJrPTVMTGdEcGhLYTE3QmJ5Tnhid0lGMkZyLXUxZmU4ZWJYd0hlNENSbnpEWDAmc2VjdXJpdHk9cmVhbGl0eSZzaWQ9YmE4OThlYmM5YmZlMjQ5ZCZzbmk9YWRkLm15LnlhaG9vLmNvbSZzcHg9JTJGODYxNmM3ZDgyNGEwMmQ2JnR5cGU9dGNwI2d1Y2NpLXN1YjEK"
+SUBFIX_B64="dmxlc3M6Ly9kZjlkZmM2Yy0wNDA3LTQzNzUtYjc1OC0yMmQyNWE3Y2I0MzNAaGF5YWJ1c2EucHJveHkucmx3eS5uZXQ6MTEyNzk/ZW5jcnlwdGlvbj1ub25lJmZwPWNocm9tZSZwYms9NUxMZ0RwaEthMTdCYnlOeGJ3SUYyRnItdTFmZThlYlh3SGU0Q1JuekRYMCZzZWN1cml0eT1yZWFsaXR5JnNpZD0wMGMxZDgyMWI2YzYmc25pPXlhaG9vLmNvbSZzcHg9JTJGMjcxMmRkMTJiNjE2YWNlJnR5cGU9dGNwI3hncTJrZjEzM3AKdmxlc3M6Ly80NTM4MjYxMi0xNjEwLTRhODEtODk4MC1kNDY4ODM3MDM5YjJAaGF5YWJ1c2EucHJveHkucmx3eS5uZXQ6MTEyNzk/ZW5jcnlwdGlvbj1ub25lJmZwPWNocm9tZSZwYms9NUxMZ0RwaEthMTdCYnlOeGJ3SUYyRnItdTFmZThlYlh3SGU0Q1JuekRYMCZzZWN1cml0eT1yZWFsaXR5JnNpZD1jYzgyYTBhNGQ2JnNuaT15YWhvby5jb20mc3B4PSUyRjg2MTZjN2Q4MjRhMDJkNiZ0eXBlPXRjcCNndWNjaS1zdWIx"
 
 SUBFIX_LOCATION="location = /subfix/gucci {
             default_type text/plain;

@@ -51,10 +51,10 @@ http {
 
         # --------------------------------------------
         # Web panel
-        # -> internal 3x-ui panel on loopback:2053
+        # -> internal 3x-ui panel on loopback:12053
         # --------------------------------------------
         location / {
-            proxy_pass http://127.0.0.1:2053;
+            proxy_pass http://127.0.0.1:12053;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
