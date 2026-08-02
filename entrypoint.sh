@@ -30,7 +30,7 @@ if [ -z "$PUBLIC_URL" ]; then
 fi
 [ -n "$PUBLIC_URL" ] && echo "[gucci] Public URL: $PUBLIC_URL"
 # Dedicated sub domain (targetPort 2096) — panel advertises THIS for sub links
-SUB_URI="${SUB_URI:-https://sub.gucciyt.ccwu.cc:2096}"
+SUB_URI="${SUB_URI:-https://vipermatrix7862.cc.cd:2096}"
 export SUB_URI
 
 # Locate the x-ui binary (path differs between image versions)
