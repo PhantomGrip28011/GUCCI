@@ -123,16 +123,23 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _fetch_upstream(self):
+        # NOTE: do NOT forward the client Host upstream — the panel sub
+        # server 400s some subs when the Host mismatches its expectations.
         req = urllib.request.Request(
             UPSTREAM + self.path,
+            data=None,
             headers={
                 "User-Agent": self.headers.get("User-Agent", "subshim"),
                 "Accept": self.headers.get("Accept", "*/*"),
                 "Accept-Encoding": "identity",
-                "Host": self.headers.get("Host", "127.0.0.1"),
+                "Host": "127.0.0.1",
             },
         )
-        return urllib.request.urlopen(req, timeout=10)
+        try:
+            return urllib.request.urlopen(req, timeout=10)
+        except urllib.error.HTTPError as e:
+            # an HTTP error is still a valid response we can relay/transform
+            return e
 
     def do_GET(self):
         resp = None
