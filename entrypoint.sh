@@ -75,18 +75,12 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
     sqlite3 "$DB" "UPDATE inbounds SET settings = json_set(settings, '\$.clients', COALESCE((SELECT json_group_array(json(j.value)) FROM json_each(settings,'\$.clients') j WHERE json_extract(j.value,'\$.email') NOT IN ('gucci-sub2')), json('[]'))) WHERE id=1 AND settings LIKE '%\"tgId\": \"\"%';" 2>&1 || true
     echo "[gucci] ghost inline clients (string tgId) purged from inbound settings"
 
-    # Version-aware cleanup for gucci-sub2:
-    #  - v2.x schema (no external_proxy column): a clients-table row crashes
-    #    the 2.9 sub renderer ("Error!" 400); 2.9 reads the inline settings
-    #    copy instead => delete the table row there.
-    #  - v3.x schema (external_proxy column exists): the clients TABLE is the
-    #    source of truth for the sub service => the row MUST be kept.
-    if sqlite3 "$DB" "PRAGMA table_info(inbounds);" 2>/dev/null | grep -q 'external_proxy'; then
-        echo "[gucci] 3.x schema detected — keeping clients-table rows (source of truth)"
-    else
-        sqlite3 "$DB" "DELETE FROM clients WHERE email='gucci-sub2';" 2>&1 || true
-        echo "[gucci] 2.x schema — stale clients-table row for gucci-sub2 cleared"
-    fi
+    # gucci-sub2: NEVER delete clients-table rows at boot. On v3.x the table
+    # is the sub service's source of truth (deleting it 400s the feed), and
+    # the external-proxy column check was unreliable (3.4.x lacks the column).
+    # If a future downgrade to 2.9.x ever 400s /sub/vwhkeeda1wl79ydj, re-add:
+    #   DELETE FROM clients WHERE email='gucci-sub2';
+    echo "[gucci] clients-table rows kept (v3.x: table is the sub source of truth)"
 
     # Pin inbound #1 externalProxy to the live Railway TCP proxy, so vless/sub
     # links ALWAYS carry the working public address (kills the flip-flop that
