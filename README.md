@@ -66,3 +66,13 @@ docker run -d --name gucci \
 - **راه‌حل:** فید اشتراک همیشه-درست روی `https://دامنه/subfix/gucci` سرو می‌شود — همان لینک‌های VLESS+Reality با آدرس بدرستی TCP Proxy ریلی.
 - لینک‌های modal پنل (دکمه کپی/QR کنار کلاینت) هم با `externalProxy` روی اینباند، آدرس درست پروکسی را می‌سازند.
 - اگر پروکسی ریلی عوض شد (delete/create جدید)، `SUBFIX_B64` داخل `entrypoint.sh` را با base64 لینک‌های جدید به‌روزرسانی کنید و redeploy.
+
+## 🕵️ Hidden panel + black splash (current setup)
+
+- Panel opens ONLY at: **`https://<domain>/gucciBMW/`** (secret path — undiscoverable)
+- Root `/` and every unknown path return a **plain BLACK page** (HTTP 200), never a railway error
+- Subscription stays at: **`https://<domain>/sub/<subId>`** (short form `/<subId>` also works)
+- Panel image pinned to **v2.9.0** (wide client compatibility incl. older Android cores)
+
+> To change the secret path, edit `PANEL_PATH` in entrypoint (`-webBasePath`) **and** the two
+> `location` blocks in `nginx.conf.template`, then push.
