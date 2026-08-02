@@ -63,11 +63,18 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
         echo "[gucci] subURI = $SUB_URI"
     fi
 
+    # Clear leftover hosts-table rows (written by 3.x panel eras): in v2.9 a
+    # hosts row wins over externalProxy in sub links — the stale 66.33.22.234
+    # entry lived exactly there. Empty hosts => externalProxy decides.
+    sqlite3 "$DB" "DELETE FROM hosts;" 2>&1 || true
+    echo "[gucci] hosts table cleared (stale sub-link entries gone)"
+
     # Pin inbound #1 externalProxy to the live Railway TCP proxy, so vless/sub
     # links ALWAYS carry the working public address (kills the flip-flop that
     # used to revert links to the stale 66.33.22.234 entry on every redeploy).
     if [ -n "$RAILWAY_TCP_PROXY_DOMAIN" ] && [ -n "$RAILWAY_TCP_PROXY_PORT" ]; then
         sqlite3 "$DB" "UPDATE inbounds SET external_proxy='[{\"forceTls\":\"same\",\"dest\":\"$RAILWAY_TCP_PROXY_DOMAIN\",\"port\":$RAILWAY_TCP_PROXY_PORT,\"remark\":\"rlwy-proxy\",\"security\":\"reality\"}]' WHERE id=1;" 2>&1 || true
+        sqlite3 "$DB" "SELECT id, port, external_proxy FROM inbounds;" 2>&1 | head -5 || true
         echo "[gucci] externalProxy pinned -> $RAILWAY_TCP_PROXY_DOMAIN:$RAILWAY_TCP_PROXY_PORT"
     else
         echo "[gucci] WARN: tcp proxy env missing — externalProxy left as-is"
