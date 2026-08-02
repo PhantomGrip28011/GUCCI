@@ -98,6 +98,8 @@ def build(decoded_body, userinfo, subid):
     prefix = REMARK + "-"
     if email.startswith(prefix):
         email = email[len(prefix):]
+    if email.startswith("-"):  # panel names feeds "<remark>-<email>"; empty remark leaves a stray dash
+        email = email[1:]
 
     up = down = total = expire = 0
     for part in (userinfo or "").split(";"):
