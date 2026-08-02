@@ -40,6 +40,11 @@ PASSTHRU_HEADERS = [
 COUNTRIES = ["🇩🇪 Germany", "🇳🇱 Netherlands", "🇦🇪 UAE", "🇹🇷 Turkey"]
 BANNER = "لطفاً اشتراک خود را هر روز به‌روزرسانی کنید 🔄"
 
+# The inbound remark in the panel. When a remark is set, the panel names
+# every feed link "<remark>-<email>"; strip it so the live info card keeps
+# showing the pure email (e.g. "✅ xgq2kf133p 📊 344.8 MB | 🕐 ∞").
+REMARK = "🇩🇪 🇳🇱 🇦🇪 🇹🇷 GUCCI"
+
 
 def clone(link, remark):
     base = link.split("#", 1)[0]
@@ -79,6 +84,9 @@ def build(decoded_body, userinfo, subid):
     email = subid
     if "#" in tpl_main:
         email = urllib.parse.unquote(tpl_main.rsplit("#", 1)[1]) or subid
+    prefix = REMARK + "-"
+    if email.startswith(prefix):
+        email = email[len(prefix):]
 
     up = down = total = expire = 0
     for part in (userinfo or "").split(";"):
