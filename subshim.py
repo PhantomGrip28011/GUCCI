@@ -70,6 +70,17 @@ def pick(lines, needle, fallback):
     return fallback
 
 
+# Single-entry placeholder feed shown when the panel reports the sub id as
+# gone/disabled (HTTP 400/404) — e.g. client deleted or turned off — so the
+# client's app clearly shows the red cross instead of a silent update error.
+def build_inactive(subid):
+    remark = f"❌ {subid} 📊 0 B | 🕐 0"
+    link = ("vless://00000000-0000-0000-0000-000000000000"
+            "@127.0.0.1:443?type=tcp&security=none#"
+            + urllib.parse.quote(remark))
+    return base64.b64encode((link + "\n").encode()).decode()
+
+
 def build(decoded_body, userinfo, subid):
     lines = [l.strip() for l in decoded_body.replace("\r", "").split("\n") if l.strip()]
     vless = [l for l in lines if l.startswith("vless://")]
@@ -111,7 +122,15 @@ def build(decoded_body, userinfo, subid):
     else:
         days = "∞"
 
-    info = f"✅ {email} 📊 {used_h} | 🕐 {days}"
+    # live status marker: the tick becomes a red cross when the service is
+    # inactive — expired (time over) or traffic quota fully consumed.
+    active = True
+    if total > 0 and (up + down) >= total:
+        active = False
+    if expire > 0 and int(time.time()) >= expire:
+        active = False
+
+    info = f"{'✅' if active else '❌'} {email} 📊 {used_h} | 🕐 {days}"
 
     out = [
         clone(tpl_main, COUNTRIES[0]),  # 🇩🇪 Germany
@@ -172,16 +191,21 @@ class Handler(BaseHTTPRequestHandler):
             content_type = "text/plain; charset=utf-8"
             if self.path.startswith("/sub/"):
                 subid = self.path.rstrip("/").rsplit("/", 1)[-1]
-                try:
-                    decoded = base64.b64decode(body, validate=False).decode()
-                    rebuilt = build(decoded, uinfo, subid)
-                    if rebuilt:
-                        body = rebuilt.encode()
-                    else:
+                if status in (400, 404):
+                    # sub id unknown/deleted/disabled upstream -> show ❌ card
+                    body = build_inactive(subid).encode()
+                    status = 200
+                else:
+                    try:
+                        decoded = base64.b64decode(body, validate=False).decode()
+                        rebuilt = build(decoded, uinfo, subid)
+                        if rebuilt:
+                            body = rebuilt.encode()
+                        else:
+                            content_type = resp.headers.get("Content-Type", content_type)
+                    except Exception:
                         # pass through non-vless feeds untouched
                         content_type = resp.headers.get("Content-Type", content_type)
-                except Exception:
-                    content_type = resp.headers.get("Content-Type", content_type)
             else:
                 content_type = resp.headers.get("Content-Type", content_type)
 

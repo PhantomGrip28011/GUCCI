@@ -5,7 +5,7 @@
 # NGINX sits in front and fans out to the internal
 # services; only ONE port (${PORT:-2053}) is exposed.
 # ========================================================
-FROM ghcr.io/mhsanaei/3x-ui:v2.9.4
+FROM ghcr.io/mhsanaei/3x-ui:v3.4.2
 
 RUN apk add --no-cache nginx sqlite gettext python3
 
