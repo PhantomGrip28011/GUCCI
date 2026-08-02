@@ -16,8 +16,7 @@ http {
         listen ${LISTEN_ADDR}:${FIXED_PORT};
 
         # --------------------------------------------
-        # Subscription service (sub links)
-        # -> internal 3x-ui sub server on loopback:2096
+        # Subscription service  ->  <domain>/sub/<id>
         # --------------------------------------------
         location /sub/ {
             proxy_pass http://127.0.0.1:2096;
@@ -29,7 +28,7 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         }
 
-        # JSON subscription (used only if Sub-Json is enabled in panel settings)
+        # JSON subscription (only if Sub-Json is enabled)
         location /json/ {
             proxy_pass http://127.0.0.1:2096;
             proxy_http_version 1.1;
@@ -40,20 +39,13 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         }
 
-# Optional: user inbound that was relocated off the public port
+        # Optional: user inbound relocated off the public port
         ${EXTRA_LOCATION}
 
-        # Static, always-correct subscription feed (panel modal links are
-        # right; the built-in /sub/ shows stale origin-node data on
-        # node-linked inbounds — this endpoint always advertises the
-        # working railway proxy endpoint).
+        # Static, always-correct subscription feed at /subfix/gucci
         ${SUBFIX_LOCATION}
 
-        # --------------------------------------------
-        # Foolproof short sub link: /<subId> works too
-        # (in case the /sub/ prefix gets dropped when
-        # the link is typed or shared by hand)
-        # --------------------------------------------
+        # Short sub link: /aaaaaaaaaaaaaaaa also serves the sub
         location ~ "^/(?<guccisid>[a-z0-9]{16})/?$" {
             proxy_pass http://127.0.0.1:2096/sub/$guccisid;
             proxy_http_version 1.1;
@@ -65,10 +57,10 @@ http {
         }
 
         # --------------------------------------------
-        # Web panel
-        # -> internal 3x-ui panel on loopback:12053
+        # HIDDEN web panel — ONLY reachable at /gucciBMW/
+        # (secret path; no one can discover the panel)
         # --------------------------------------------
-        location / {
+        location /gucciBMW/ {
             proxy_pass http://127.0.0.1:12053;
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -78,6 +70,21 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+        location = /gucciBMW {
+            proxy_pass http://127.0.0.1:12053;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+        }
+
+        # --------------------------------------------
+        # EVERYTHING ELSE -> plain BLACK page (HTTP 200)
+        # Root / and any unknown path shows nothing but black,
+        # never a railway error page, never the panel.
+        # --------------------------------------------
+        location / {
+            default_type text/html;
+            return 200 "${BLACK_BODY}";
         }
     }
 }

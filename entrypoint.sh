@@ -37,8 +37,8 @@ else
     XUI_BIN=/usr/local/x-ui/x-ui
 fi
 
-echo "[gucci] Pinning panel settings: internal port 12053, root path, loopback only"
-"$XUI_BIN" setting -port 12053 -webBasePath / -listenIP 127.0.0.1 \
+echo "[gucci] Pinning panel settings: internal port 12053, secret path /gucciBMW/, root path, loopback only"
+"$XUI_BIN" setting -port 12053 -webBasePath /gucciBMW/ -listenIP 127.0.0.1 \
     || echo "[gucci] WARN: could not apply panel settings"
 
 # Upsert helper: settings.key is only indexed (not unique), so UPDATE first,
@@ -122,8 +122,13 @@ SUBFIX_LOCATION="location = /subfix/gucci {
         }"
 export SUBFIX_LOCATION
 
+# Pure-black page served for / and any unknown path (panel stays
+# undiscoverable; no railway error page ever leaks through)
+BLACK_BODY='<!doctype html><html lang=en><head><meta charset=utf-8><title></title><style>html,body{margin:0;height:100%;background:#000}</style></head><body></body></html>'
+export BLACK_BODY
+
 echo "[gucci] Rendering nginx.conf (public port: $FIXED_PORT on $LISTEN_ADDR)"
-envsubst '${LISTEN_ADDR} ${FIXED_PORT} ${EXTRA_LOCATION} ${SUBFIX_LOCATION}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+envsubst '${LISTEN_ADDR} ${FIXED_PORT} ${EXTRA_LOCATION} ${SUBFIX_LOCATION} ${BLACK_BODY}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
 echo "[gucci] Starting x-ui (internal services)..."
 if [ -f /app/DockerEntrypoint.sh ]; then
