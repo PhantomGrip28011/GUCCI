@@ -75,12 +75,19 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
     sqlite3 "$DB" "UPDATE inbounds SET settings = json_set(settings, '\$.clients', COALESCE((SELECT json_group_array(json(j.value)) FROM json_each(settings,'\$.clients') j WHERE json_extract(j.value,'\$.email') NOT IN ('gucci-sub2')), json('[]'))) WHERE id=1 AND settings LIKE '%\"tgId\": \"\"%';" 2>&1 || true
     echo "[gucci] ghost inline clients (string tgId) purged from inbound settings"
 
-    # gucci-sub2: NEVER delete clients-table rows at boot. On v3.x the table
-    # is the sub service's source of truth (deleting it 400s the feed), and
-    # the external-proxy column check was unreliable (3.4.x lacks the column).
-    # If a future downgrade to 2.9.x ever 400s /sub/vwhkeeda1wl79ydj, re-add:
-    #   DELETE FROM clients WHERE email='gucci-sub2';
-    echo "[gucci] clients-table rows kept (v3.x: table is the sub source of truth)"
+    # gucci-sub2 source-of-truth: keep the client INSIDE inbound #1 inline
+    # settings JSON. v3.4.x runs a background reconciler that DELETES
+    # clients-table rows which are missing from settings (API-only rows
+    # vanished within minutes), while v2.x and v3.x migrations both rebuild
+    # the table from settings. Inline settings = it survives everything.
+    SUB2_EXISTS=$(sqlite3 "$DB" "SELECT COUNT(*) FROM inbounds i, json_each(i.settings,'\$.clients') j WHERE i.id=1 AND json_extract(j.value,'\$.email')='gucci-sub2';" 2>/dev/null || echo 0)
+    if [ "$SUB2_EXISTS" = "0" ]; then
+        NOWMS=$(($(date +%s) * 1000))
+        sqlite3 "$DB" "UPDATE inbounds SET settings = json_insert(settings, '\$.clients[#]', json('{\"comment\":\"\",\"created_at\":$NOWMS,\"email\":\"gucci-sub2\",\"enable\":true,\"expiryTime\":0,\"flow\":\"\",\"id\":\"95f5a8c0-4274-4b59-a342-8423a35e8530\",\"limitIp\":0,\"reset\":0,\"subId\":\"vwhkeeda1wl79ydj\",\"tgId\":0,\"totalGB\":0,\"updated_at\":$NOWMS}')) WHERE id=1;" 2>&1 || true
+        echo "[gucci] gucci-sub2 injected into inbound settings (source of truth)"
+    else
+        echo "[gucci] gucci-sub2 already present in inbound settings"
+    fi
 
     # Pin inbound #1 externalProxy to the live Railway TCP proxy, so vless/sub
     # links ALWAYS carry the working public address (kills the flip-flop that
