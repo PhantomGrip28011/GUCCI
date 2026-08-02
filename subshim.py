@@ -123,23 +123,28 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _fetch_upstream(self):
-        # NOTE: do NOT forward the client Host upstream — the panel sub
-        # server 400s some subs when the Host mismatches its expectations.
-        req = urllib.request.Request(
-            UPSTREAM + self.path,
-            data=None,
-            headers={
-                "User-Agent": self.headers.get("User-Agent", "subshim"),
-                "Accept": self.headers.get("Accept", "*/*"),
-                "Accept-Encoding": "identity",
-                "Host": "127.0.0.1",
-            },
-        )
-        try:
-            return urllib.request.urlopen(req, timeout=10)
-        except urllib.error.HTTPError as e:
-            # an HTTP error is still a valid response we can relay/transform
-            return e
+        # The panel sub server enforces its configured subDomain for SOME
+        # client types and 400s otherwise; prefer the canonical panel
+        # domain, and fall back to bare loopback on any failure.
+        ua = self.headers.get("User-Agent", "subshim")
+        ac = self.headers.get("Accept", "*/*")
+        for host in ("vipermatrix7862.cc.cd", "127.0.0.1"):
+            req = urllib.request.Request(
+                UPSTREAM + self.path,
+                data=None,
+                headers={"User-Agent": ua, "Accept": ac,
+                         "Accept-Encoding": "identity", "Host": host},
+            )
+            try:
+                resp = urllib.request.urlopen(req, timeout=10)
+            except urllib.error.HTTPError as e:
+                resp = e  # an HTTP error is still a relayable response
+            except Exception:
+                continue
+            if getattr(resp, "status", 200) < 400:
+                return resp
+            last = resp
+        return last
 
     def do_GET(self):
         resp = None
