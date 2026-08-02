@@ -62,6 +62,16 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
         set_setting subURI "$SUB_URI"
         echo "[gucci] subURI = $SUB_URI"
     fi
+
+    # Pin inbound #1 externalProxy to the live Railway TCP proxy, so vless/sub
+    # links ALWAYS carry the working public address (kills the flip-flop that
+    # used to revert links to the stale 66.33.22.234 entry on every redeploy).
+    if [ -n "$RAILWAY_TCP_PROXY_DOMAIN" ] && [ -n "$RAILWAY_TCP_PROXY_PORT" ]; then
+        sqlite3 "$DB" "UPDATE inbounds SET external_proxy='[{\"forceTls\":\"same\",\"dest\":\"$RAILWAY_TCP_PROXY_DOMAIN\",\"port\":$RAILWAY_TCP_PROXY_PORT,\"remark\":\"rlwy-proxy\",\"security\":\"reality\"}]' WHERE id=1;" 2>&1 || true
+        echo "[gucci] externalProxy pinned -> $RAILWAY_TCP_PROXY_DOMAIN:$RAILWAY_TCP_PROXY_PORT"
+    else
+        echo "[gucci] WARN: tcp proxy env missing — externalProxy left as-is"
+    fi
 fi
 
 # ---------------------------------------------------------------
