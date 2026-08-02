@@ -19,7 +19,9 @@ http {
         # Subscription service  ->  <domain>/sub/<id>
         # --------------------------------------------
         location /sub/ {
-            proxy_pass http://127.0.0.1:2096;
+            # 2097 = subshim (renames/reorders links + live usage card),
+            # which itself proxies the real panel sub service on 2096.
+            proxy_pass http://127.0.0.1:2097;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Host $host;
@@ -47,7 +49,7 @@ http {
 
         # Short sub link: /aaaaaaaaaaaaaaaa also serves the sub
         location ~ "^/(?<guccisid>[a-z0-9]{16})/?$" {
-            proxy_pass http://127.0.0.1:2096/sub/$guccisid;
+            proxy_pass http://127.0.0.1:2097/sub/$guccisid;
             proxy_http_version 1.1;
             proxy_set_header Host $host;
             proxy_set_header X-Forwarded-Host $host;

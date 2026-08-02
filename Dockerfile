@@ -7,9 +7,10 @@
 # ========================================================
 FROM ghcr.io/mhsanaei/3x-ui:v2.9.4
 
-RUN apk add --no-cache nginx sqlite gettext
+RUN apk add --no-cache nginx sqlite gettext python3
 
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY subshim.py /usr/local/bin/subshim.py
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

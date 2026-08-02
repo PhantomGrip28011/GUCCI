@@ -163,6 +163,13 @@ else
     "$XUI_BIN" &
 fi
 
+# subshim: presentation layer for /sub/ (names/links + live usage card);
+# safely falls back to raw upstream on any error.
+if command -v python3 >/dev/null 2>&1; then
+    echo "[gucci] Starting subshim on 127.0.0.1:2097"
+    ( while true; do python3 /usr/local/bin/subshim.py; sleep 2; done ) &
+fi
+
 sleep 3
 
 echo "[gucci] listeners right before nginx starts:"
