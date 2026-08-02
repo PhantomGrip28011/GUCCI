@@ -76,3 +76,12 @@ docker run -d --name gucci \
 
 > To change the secret path, edit `PANEL_PATH` in entrypoint (`-webBasePath`) **and** the two
 > `location` blocks in `nginx.conf.template`, then push.
+
+## Final architecture (Aug 2026)
+- Panel: hidden at `/gucciBMW/` (everything else = pure black page), pinned v2.9.0
+- Sub links (classic form): `https://vipermatrix7862.cc.cd:2096/sub/<id>`
+  - Custom domain on Railway → Cloudflare (orange cloud) → Origin Rule rewrites
+    any visitor port to origin :443 (CF's same-port default otherwise 522s on :2096)
+  - entrypoint pins `SUB_URI` so the panel always advertises this base
+- Link stability: entrypoint clears stale `hosts` rows + sub feed serves the live
+  Railway TCP-proxy endpoint; telegram proxy via zephyr.proxy.rlwy.net:57073
