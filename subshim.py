@@ -16,6 +16,7 @@
 # subscription-userinfo header, so they always mirror the user's live usage.
 # On ANY error the raw upstream response is returned untouched.
 import base64
+import gzip
 import time
 import urllib.parse
 import urllib.request
@@ -126,6 +127,7 @@ class Handler(BaseHTTPRequestHandler):
             headers={
                 "User-Agent": self.headers.get("User-Agent", "subshim"),
                 "Accept": self.headers.get("Accept", "*/*"),
+                "Accept-Encoding": "identity",
                 "Host": self.headers.get("Host", "127.0.0.1"),
             },
         )
@@ -137,6 +139,8 @@ class Handler(BaseHTTPRequestHandler):
             resp = self._fetch_upstream()
             status = resp.status
             body = resp.read()
+            if resp.headers.get("Content-Encoding") == "gzip":
+                body = gzip.decompress(body)
             uinfo = resp.headers.get("subscription-userinfo", "")
             extra = {}
             for h in PASSTHRU_HEADERS:
