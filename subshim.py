@@ -18,6 +18,7 @@
 import base64
 import gzip
 import time
+import traceback
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -173,7 +174,12 @@ class Handler(BaseHTTPRequestHandler):
             if self.command == "GET":
                 self.wfile.write(body)
         except Exception:
-            # absolute last resort: behave like a dead-simple black 200
+            # log the real cause to the container logs, then degrade gracefully
+            try:
+                print("[subshim] ERROR on", self.path)
+                traceback.print_exc()
+            except Exception:
+                pass
             try:
                 if resp is not None:
                     resp.close()
