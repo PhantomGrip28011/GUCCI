@@ -69,6 +69,12 @@ if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
     sqlite3 "$DB" "DELETE FROM hosts;" 2>&1 || true
     echo "[gucci] hosts table cleared (stale sub-link entries gone)"
 
+    # Drop ghost inline clients whose tgId is a STRING (added via v2.9-era API).
+    # 3.x unmarshals inbounds.settings into int64 tgId and then EVERY inbound
+    # update fails. They re-live in the clients table via the 3.x API instead.
+    sqlite3 "$DB" "UPDATE inbounds SET settings = json_set(settings, '\$.clients', COALESCE((SELECT json_group_array(json(j.value)) FROM json_each(settings,'\$.clients') j WHERE json_extract(j.value,'\$.email') NOT IN ('gucci-sub2')), json('[]'))) WHERE id=1 AND settings LIKE '%\"tgId\": \"\"%';" 2>&1 || true
+    echo "[gucci] ghost inline clients (string tgId) purged from inbound settings"
+
     # Pin inbound #1 externalProxy to the live Railway TCP proxy, so vless/sub
     # links ALWAYS carry the working public address (kills the flip-flop that
     # used to revert links to the stale 66.33.22.234 entry on every redeploy).
