@@ -29,6 +29,9 @@ if [ -z "$PUBLIC_URL" ]; then
     fi
 fi
 [ -n "$PUBLIC_URL" ] && echo "[gucci] Public URL: $PUBLIC_URL"
+# Dedicated sub domain (targetPort 2096) — panel advertises THIS for sub links
+SUB_URI="${SUB_URI:-https://gucci-production-34f8.up.railway.app}"
+export SUB_URI
 
 # Locate the x-ui binary (path differs between image versions)
 if [ -x /app/x-ui ]; then
@@ -51,13 +54,13 @@ set_setting() {
 if command -v sqlite3 >/dev/null 2>&1 && [ -f "$DB" ]; then
     echo "[gucci] Enabling subscription service on loopback 2096 (/sub/)"
     set_setting subEnable true
-    set_setting subListen 127.0.0.1
+    set_setting subListen ''    # all interfaces: the dedicated sub domain hits :2096 directly
     set_setting subPath  /sub/
 
     # If the public URL is provided, tell 3x-ui to build sub links with it
     if [ -n "$PUBLIC_URL" ]; then
-        set_setting subURI "$PUBLIC_URL"
-        echo "[gucci] subURI = $PUBLIC_URL"
+        set_setting subURI "$SUB_URI"
+        echo "[gucci] subURI = $SUB_URI"
     fi
 fi
 
